@@ -1,0 +1,139 @@
+/* style.css */
+body {
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+  background: #f4f6f8;
+  color: #333;
+}
+
+header {
+  background: #3f51b5;
+  color: #fff;
+  padding: 15px 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+nav {
+  margin-top: 10px;
+}
+
+nav button {
+  background: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  margin-right: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+nav button:hover {
+  background: #e0e0e0;
+}
+
+.section {
+  padding: 20px;
+  background: #fff;
+  margin: 20px auto;
+  max-width: 800px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.hidden {
+  display: none;
+}
+
+/* Chat Styles */
+.chat-container {
+  border: 1px solid #ddd;
+  padding: 15px;
+  height: 300px;
+  overflow-y: auto;
+  background: #fafafa;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-message {
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 8px;
+  max-width: 70%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-message.user {
+  background: #e8f0fe;
+  align-self: flex-end;
+  text-align: right;
+}
+
+.chat-message.meco {
+  background: #fff;
+  border: 1px solid #ddd;
+  align-self: flex-start;
+  text-align: left;
+}
+
+.chat-message .timestamp {
+  font-size: 10px;
+  color: #999;
+  margin-top: 5px;
+  align-self: flex-end;
+}
+
+.chat-input {
+  display: flex;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-right: 5px;
+}
+
+.chat-input button {
+  padding: 10px 15px;
+  border: none;
+  background: #3f51b5;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Forms for Other Sections */
+form input,
+form button {
+  padding: 10px;
+  margin: 5px 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+form button {
+  background: #3f51b5;
+  color: #fff;
+  cursor: pointer;
+  border: none;
+}
+
+canvas {
+  margin-top: 20px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+}

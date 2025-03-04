@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Content Creator Planner</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700" rel="stylesheet">
+</head>
+
+<body>
+  <header>
+    <h1>Content Creator Planner</h1>
+    <nav>
+      <button id="nav-chat">Chat</button>
+      <button id="nav-calendar">Calendar</button>
+      <button id="nav-dashboard">Analytics</button>
+      <button id="nav-finance">Finance</button>
+      <button id="nav-consistency">Consistency</button>
+    </nav>
+  </header>
+  <main>
+    <!-- Chat Section -->
+    <section id="section-chat" class="section">
+      <h2>Chat with Our AI</h2>
+      <div id="chat-container" class="chat-container">
+        <!-- Chat messages appear here -->
+      </div>
+      <div class="chat-input">
+        <input type="text" id="niche-input" placeholder="Type your niche or message...">
+        <button id="niche-submit">Send</button>
+      </div>
+    </section>
+    <!-- Calendar Section -->
+    <section id="section-calendar" class="section hidden">
+      <h2>Content Calendar</h2>
+      <form id="calendar-form">
+        <input type="date" id="event-date" required>
+        <input type="text" id="event-title" placeholder="Event Title" required>
+        <button type="submit">Add Event</button>
+      </form>
+      <ul id="calendar-events"></ul>
+    </section>
+    <!-- Analytics Dashboard Section -->
+    <section id="section-dashboard" class="section hidden">
+      <h2>Analytics Dashboard</h2>
+      <form id="analytics-form">
+        <input type="date" id="analytics-date" required>
+        <input type="number" id="likes" placeholder="Likes" required>
+        <input type="number" id="views" placeholder="Views" required>
+        <input type="number" id="engagements" placeholder="Engagements" required>
+        <button type="submit">Add Data</button>
+      </form>
+      <canvas id="analyticsChart"></canvas>
+    </section>
+    <!-- Finance Tracker Section -->
+    <section id="section-finance" class="section hidden">
+      <h2>Finance Tracker</h2>
+      <form id="finance-form">
+        <input type="date" id="finance-date" required>
+        <input type="number" id="cost" placeholder="Cost" required>
+        <input type="number" id="revenue" placeholder="Revenue" required>
+        <button type="submit">Add Entry</button>
+      </form>
+      <ul id="finance-entries"></ul>
+      <canvas id="financeChart"></canvas>
+      <div id="finance-advice"></div>
+    </section>
+    <!-- Consistency Tracker Section -->
+    <section id="section-consistency" class="section hidden">
+      <h2>Consistency Tracker</h2>
+      <form id="post-form">
+        <input type="date" id="post-date" required>
+        <button type="submit">Log Post</button>
+      </form>
+      <div id="consistency-data"></div>
+      <canvas id="consistencyChart"></canvas>
+    </section>
+    <!-- Hashtag Input Section -->
+    <section id="section-hashtags" class="section">
+      <h2>Enter Hashtags</h2>
+      <input type="text" id="hashtag-input" placeholder="Enter hashtags separated by commas...">
+      <button id="hashtag-submit">Save Hashtags</button>
+    </section>
+  </main>
+  <!-- Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Include simulateGPT.js as a module -->
+  <script type="module" src="simulateGPT.js"></script>
+  <!-- Main App Script -->
+  <script type="module" src="app.js"></script>
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(registration => {
+          console.log('Service Worker registered with scope:', registration.scope);
+        })
+        .catch(error => {
+          console.log('Service Worker registration failed:', error);
+        });
+    }
+  </script>
+</body>
+
+</html>
