@@ -1,4 +1,5 @@
-import { simulateGPTResponse } from './simulateGPT.js';
+import { deepSeekQuery } from './deepseek.js';
+
 
 document.addEventListener("DOMContentLoaded", function() {
   // Section Navigation
@@ -11,16 +12,19 @@ document.addEventListener("DOMContentLoaded", function() {
     hashtags: document.getElementById('section-hashtags')
   };
 
-  document.getElementById('nav-chat').addEventListener('click', () => showSection('chat'));
-  document.getElementById('nav-calendar').addEventListener('click', () => showSection('calendar'));
-  document.getElementById('nav-dashboard').addEventListener('click', () => showSection('dashboard'));
-  document.getElementById('nav-finance').addEventListener('click', () => showSection('finance'));
-  document.getElementById('nav-consistency').addEventListener('click', () => showSection('consistency'));
+   // Navigation event listeners
+   document.querySelectorAll('[id^="nav-"]').forEach(button => {
+    const sectionKey = button.id.replace('nav-', '');
+    button.addEventListener('click', () => showSection(sectionKey));
+  });
 
   function showSection(sectionKey) {
     Object.values(sections).forEach(section => section.classList.add('hidden'));
     sections[sectionKey].classList.remove('hidden');
   }
+
+   // Initialize chat section
+  showSection('chat');
 
   // Chat Module
   const chatContainer = document.getElementById('chat-container');
@@ -28,62 +32,135 @@ document.addEventListener("DOMContentLoaded", function() {
   const hashtagInput = document.getElementById('hashtag-input');
   const nicheSubmit = document.getElementById('niche-submit');
   const hashtagSubmit = document.getElementById('hashtag-submit');
+  let postGenerationMode = false;
+  let postGenerationNiche = "";
+  let isProcessing = false; // Rate limiter flag
 
-  // Load saved hashtags from localStorage
+  // Hashtag Module
   let savedHashtags = localStorage.getItem('savedHashtags') || '';
-
+  hashtagInput.value = savedHashtags;
   hashtagSubmit.addEventListener('click', () => {
     savedHashtags = hashtagInput.value.trim();
     localStorage.setItem('savedHashtags', savedHashtags);
-    alert('Hashtags saved!');
+    showToast('Hashtags saved successfully!');
   });
 
-  function appendMessage(message, sender) {
+  function sanitizeInput(text) {
+    return text.replace(/<[^>]*>?/gm, '');
+  }
+
+  function formatResponse(text) {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>')
+      .replace(/- (.*?)(<br>|$)/g, '• $1<br>');
+  }
+
+  function appendMessage(content, sender) {
     const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-message ' + sender;
-    messageDiv.textContent = message;
-    // Append timestamp
-    const timestampSpan = document.createElement('span');
-    timestampSpan.className = 'timestamp';
-    timestampSpan.textContent = " " + new Date().toLocaleTimeString();
-    messageDiv.appendChild(timestampSpan);
+    messageDiv.className = `chat-message ${sender}`;
+    messageDiv.innerHTML = `
+      <div class="message-bubble">
+        <div class="message-header">
+          <strong>${sender === 'user' ? 'You' : 'meco'}</strong>
+          <span class="timestamp">${new Date().toLocaleTimeString()}</span>
+        </div>
+        <div class="message-content">${formatResponse(content)}</div>
+      </div>
+    `;
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
 
-  // Simulate typing indicator
   function showTypingIndicator() {
     const typingDiv = document.createElement('div');
     typingDiv.className = 'chat-message meco typing';
-    typingDiv.textContent = "meco is typing...";
+    typingDiv.innerHTML = `
+      <div class="message-bubble">
+        <div class="typing-indicator">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    `;
     chatContainer.appendChild(typingDiv);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
     return typingDiv;
   }
 
-  nicheSubmit.addEventListener('click', () => {
-    const userInput = nicheInput.value.trim();
-    if (!userInput) return;
-    appendMessage("You: " + userInput, "user");
-    nicheInput.value = '';
+  
+ // Main chat handler
+ nicheSubmit.addEventListener('click', async () => {
+  if (isProcessing) return;
+  isProcessing = true;
+  
+  const rawInput = nicheInput.value.trim();
+  if (!rawInput) {
+    isProcessing = false;
+    return;
+  }
 
-    // Show typing indicator and simulate delay before responding
+  const userInput = sanitizeInput(rawInput);
+  nicheInput.value = '';
+  appendMessage(userInput, 'user');
+
+  try {
+    let response;
     const typingIndicator = showTypingIndicator();
-    setTimeout(() => {
-      typingIndicator.remove();
-      let mecoResponse = simulateGPTResponse(userInput);
-      if (savedHashtags) {
-        mecoResponse += " " + savedHashtags.split(',').map(tag => `#${tag.trim()}`).join(' ');
-      }
-      appendMessage("meco: " + mecoResponse, "meco");
-    }, 1500); // 1.5-second delay
-  });
 
-  // Calendar Module
+    // Post generation flow
+    if (postGenerationMode) {
+      const platform = userInput.toLowerCase();
+      response = await deepSeekQuery(
+        `Generate a ${platform} post about ${postGenerationNiche}. Include hashtags: ${savedHashtags}`
+      );
+      postGenerationMode = false;
+      postGenerationNiche = "";
+    }
+    // Generate post command
+    else if (userInput.toLowerCase().startsWith('generate post')) {
+      const match = userInput.match(/generate post(?: about)? (.+)/i);
+      if (match?.[1]) {
+        postGenerationNiche = match[1].trim();
+        postGenerationMode = true;
+        response = "Which platform? (twitter/instagram/facebook/linkedin/tiktok)";
+      } else {
+        response = "Please specify the niche for the post";
+      }
+    }
+    // All other queries
+    else {
+      response = await deepSeekQuery(
+        userInput.startsWith('deep search:') 
+          ? userInput.slice('deep search:'.length).trim()
+          : userInput
+      );
+    }
+
+    typingIndicator.remove();
+    appendMessage(response, 'meco');
+  } catch (err) {
+    appendMessage(`Error: ${err.message}`, 'meco');
+  } finally {
+    isProcessing = false;
+  }
+});
+
+// Toast notifications
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}
+
+  // Calendar Module (unchanged)
   let calendarEvents = JSON.parse(localStorage.getItem('calendarEvents')) || [];
   const calendarForm = document.getElementById('calendar-form');
   const calendarEventsList = document.getElementById('calendar-events');
-
   calendarForm.addEventListener('submit', function(e) {
     e.preventDefault();
     const date = document.getElementById('event-date').value;
@@ -95,7 +172,6 @@ document.addEventListener("DOMContentLoaded", function() {
       calendarForm.reset();
     }
   });
-
   function renderCalendarEvents() {
     calendarEventsList.innerHTML = '';
     calendarEvents.forEach(event => {
@@ -106,11 +182,10 @@ document.addEventListener("DOMContentLoaded", function() {
   }
   renderCalendarEvents();
 
-  // Analytics Module
+  // Analytics Module (unchanged)
   let analyticsDataPoints = JSON.parse(localStorage.getItem('analyticsDataPoints')) || [];
   const analyticsForm = document.getElementById('analytics-form');
   const analyticsCtx = document.getElementById('analyticsChart').getContext('2d');
-
   analyticsForm.addEventListener('submit', function(e) {
     e.preventDefault();
     const date = document.getElementById('analytics-date').value;
@@ -124,7 +199,6 @@ document.addEventListener("DOMContentLoaded", function() {
       analyticsForm.reset();
     }
   });
-
   let analyticsChart = new Chart(analyticsCtx, {
     type: 'line',
     data: {
@@ -156,7 +230,6 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     }
   });
-
   function updateAnalyticsChart() {
     analyticsChart.data.labels = analyticsDataPoints.map(dp => dp.date);
     analyticsChart.data.datasets[0].data = analyticsDataPoints.map(dp => dp.likes);
@@ -165,13 +238,12 @@ document.addEventListener("DOMContentLoaded", function() {
     analyticsChart.update();
   }
 
-  // Finance Module
+  // Finance Module (unchanged)
   let financeEntries = JSON.parse(localStorage.getItem('financeEntries')) || [];
   const financeForm = document.getElementById('finance-form');
   const financeEntriesList = document.getElementById('finance-entries');
   const financeCtx = document.getElementById('financeChart').getContext('2d');
   const financeAdvice = document.getElementById('finance-advice');
-
   financeForm.addEventListener('submit', function(e) {
     e.preventDefault();
     const date = document.getElementById('finance-date').value;
@@ -186,7 +258,6 @@ document.addEventListener("DOMContentLoaded", function() {
       financeForm.reset();
     }
   });
-
   function renderFinanceEntries() {
     financeEntriesList.innerHTML = '';
     financeEntries.forEach(entry => {
@@ -197,7 +268,6 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
   renderFinanceEntries();
-
   let financeChart = new Chart(financeCtx, {
     type: 'line',
     data: {
@@ -223,14 +293,12 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     }
   });
-
   function updateFinanceChart() {
     financeChart.data.labels = financeEntries.map(entry => entry.date);
     financeChart.data.datasets[0].data = financeEntries.map(entry => entry.cost);
     financeChart.data.datasets[1].data = financeEntries.map(entry => entry.revenue);
     financeChart.update();
   }
-
   function updateFinanceAdvice() {
     const totalCost = financeEntries.reduce((sum, entry) => sum + entry.cost, 0);
     const totalRevenue = financeEntries.reduce((sum, entry) => sum + entry.revenue, 0);
@@ -243,12 +311,11 @@ document.addEventListener("DOMContentLoaded", function() {
   }
   updateFinanceAdvice();
 
-  // Consistency Module
+  // Consistency Module (unchanged)
   let publishedPosts = JSON.parse(localStorage.getItem('publishedPosts')) || [];
   const postForm = document.getElementById('post-form');
   const consistencyData = document.getElementById('consistency-data');
   const consistencyCtx = document.getElementById('consistencyChart').getContext('2d');
-
   postForm.addEventListener('submit', function(e) {
     e.preventDefault();
     const date = document.getElementById('post-date').value;
@@ -259,8 +326,6 @@ document.addEventListener("DOMContentLoaded", function() {
       postForm.reset();
     }
   });
-
-  // Initialize consistencyChart
   window.consistencyChart = new Chart(consistencyCtx, {
     type: 'bar',
     data: {
@@ -276,22 +341,17 @@ document.addEventListener("DOMContentLoaded", function() {
     },
     options: {
       responsive: true,
-      scales: {
-        y: { beginAtZero: true }
-      }
+      scales: { y: { beginAtZero: true } }
     }
   });
-
   function updateConsistencyData() {
     const now = new Date();
-    let weeklyCounts = [0, 0, 0, 0]; // [This Week, Last Week, 2 Weeks Ago, 3 Weeks Ago]
+    let weeklyCounts = [0, 0, 0, 0];
     publishedPosts.forEach(dateStr => {
       const postDate = new Date(dateStr);
       const diffDays = (now - postDate) / (1000 * 60 * 60 * 24);
       const weekIndex = Math.floor(diffDays / 7);
-      if (weekIndex < 4) {
-        weeklyCounts[weekIndex]++;
-      }
+      if (weekIndex < 4) { weeklyCounts[weekIndex]++; }
     });
     consistencyData.innerHTML = `
       <p>This Week: ${weeklyCounts[0]} posts</p>
@@ -301,9 +361,7 @@ document.addEventListener("DOMContentLoaded", function() {
     `;
     updateConsistencyChart(weeklyCounts);
   }
-
   function updateConsistencyChart(weeklyCounts) {
-
     if (window.consistencyChart && window.consistencyChart.data.datasets) {
       window.consistencyChart.data.datasets[0].data = weeklyCounts; 
       window.consistencyChart.update();
@@ -321,12 +379,7 @@ document.addEventListener("DOMContentLoaded", function() {
             fill: true
           }]
         },
-        options: {
-          responsive: true,
-          scales: {
-            y: { beginAtZero: true }
-          }
-        }
+        options: { responsive: true, scales: { y: { beginAtZero: true } } }
       });
     }
   }
