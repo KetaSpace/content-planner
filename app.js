@@ -1,6 +1,5 @@
 import { deepSeekQuery } from './deepseek.js';
 
-
 document.addEventListener("DOMContentLoaded", function() {
   // Section Navigation
   const sections = {
@@ -12,8 +11,8 @@ document.addEventListener("DOMContentLoaded", function() {
     hashtags: document.getElementById('section-hashtags')
   };
 
-   // Navigation event listeners
-   document.querySelectorAll('[id^="nav-"]').forEach(button => {
+  // Navigation handlers
+  document.querySelectorAll('[id^="nav-"]').forEach(button => {
     const sectionKey = button.id.replace('nav-', '');
     button.addEventListener('click', () => showSection(sectionKey));
   });
@@ -23,27 +22,22 @@ document.addEventListener("DOMContentLoaded", function() {
     sections[sectionKey].classList.remove('hidden');
   }
 
-   // Initialize chat section
+  // Initialize chat section
   showSection('chat');
 
-  // Chat Module
+  // ========== CHAT MODULE ==========
   const chatContainer = document.getElementById('chat-container');
   const nicheInput = document.getElementById('niche-input');
-  const hashtagInput = document.getElementById('hashtag-input');
   const nicheSubmit = document.getElementById('niche-submit');
-  const hashtagSubmit = document.getElementById('hashtag-submit');
   let postGenerationMode = false;
   let postGenerationNiche = "";
-  let isProcessing = false; // Rate limiter flag
+  let isProcessing = false;
 
-  // Hashtag Module
+  // ========== HASHTAG MODULE ==========
+  const hashtagInput = document.getElementById('hashtag-input');
+  const hashtagSubmit = document.getElementById('hashtag-submit');
   let savedHashtags = localStorage.getItem('savedHashtags') || '';
   hashtagInput.value = savedHashtags;
-  hashtagSubmit.addEventListener('click', () => {
-    savedHashtags = hashtagInput.value.trim();
-    localStorage.setItem('savedHashtags', savedHashtags);
-    showToast('Hashtags saved successfully!');
-  });
 
   function sanitizeInput(text) {
     return text.replace(/<[^>]*>?/gm, '');
@@ -59,7 +53,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function appendMessage(content, sender) {
     const messageDiv = document.createElement('div');
-    messageDiv.className = `chat-message ${sender}`;
+    messageDiv.className = `chat-message ${sender} ${isMobile() ? 'mobile' : ''}`;
     messageDiv.innerHTML = `
       <div class="message-bubble">
         <div class="message-header">
@@ -87,75 +81,90 @@ document.addEventListener("DOMContentLoaded", function() {
     return typingDiv;
   }
 
-  
- // Main chat handler
- nicheSubmit.addEventListener('click', async () => {
-  if (isProcessing) return;
-  isProcessing = true;
-  
-  const rawInput = nicheInput.value.trim();
-  if (!rawInput) {
-    isProcessing = false;
-    return;
+  nicheInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      nicheSubmit.click();
+    }
+  });
+
+  // Utility function to check if the user is on a mobile device
+  function isMobile() {
+    return /Mobi|Android/i.test(navigator.userAgent);
   }
 
-  const userInput = sanitizeInput(rawInput);
-  nicheInput.value = '';
-  appendMessage(userInput, 'user');
+  // Main chat handler
+  nicheSubmit.addEventListener('click', async () => {
+    if (isProcessing) return;
+    isProcessing = true;
 
-  try {
-    let response;
-    const typingIndicator = showTypingIndicator();
-
-    // Post generation flow
-    if (postGenerationMode) {
-      const platform = userInput.toLowerCase();
-      response = await deepSeekQuery(
-        `Generate a ${platform} post about ${postGenerationNiche}. Include hashtags: ${savedHashtags}`
-      );
-      postGenerationMode = false;
-      postGenerationNiche = "";
+    const rawInput = nicheInput.value.trim();
+    if (!rawInput) {
+      isProcessing = false;
+      return;
     }
-    // Generate post command
-    else if (userInput.toLowerCase().startsWith('generate post')) {
-      const match = userInput.match(/generate post(?: about)? (.+)/i);
-      if (match?.[1]) {
-        postGenerationNiche = match[1].trim();
-        postGenerationMode = true;
-        response = "Which platform? (twitter/instagram/facebook/linkedin/tiktok)";
+
+    const userInput = sanitizeInput(rawInput);
+    nicheInput.value = '';
+    appendMessage(userInput, 'user');
+
+    try {
+      let response;
+      const typingIndicator = showTypingIndicator();
+
+      if (postGenerationMode) {
+        const platform = userInput.toLowerCase();
+        response = await deepSeekQuery(
+          `Generate a ${platform} post about ${postGenerationNiche}. Include hashtags: ${savedHashtags}`
+        );
+        postGenerationMode = false;
+        postGenerationNiche = "";
+      } else if (userInput.toLowerCase().startsWith('generate post')) {
+        const match = userInput.match(/generate post(?: about)? (.+)/i);
+        if (match?.[1]) {
+          postGenerationNiche = match[1].trim();
+          postGenerationMode = true;
+          response = "Which platform? (twitter/instagram/facebook/linkedin/tiktok)";
+        } else {
+          response = "Please specify the niche for the post";
+        }
       } else {
-        response = "Please specify the niche for the post";
+        response = await deepSeekQuery(
+          userInput.startsWith('deep search:') 
+            ? userInput.slice('deep search:'.length).trim()
+            : userInput
+        );
       }
-    }
-    // All other queries
-    else {
-      response = await deepSeekQuery(
-        userInput.startsWith('deep search:') 
-          ? userInput.slice('deep search:'.length).trim()
-          : userInput
-      );
-    }
 
-    typingIndicator.remove();
-    appendMessage(response, 'meco');
-  } catch (err) {
-    appendMessage(`Error: ${err.message}`, 'meco');
-  } finally {
-    isProcessing = false;
+      typingIndicator.remove();
+      appendMessage(response, 'meco');
+    } catch (err) {
+      appendMessage(`Error: ${err.message}`, 'meco');
+    } finally {
+      isProcessing = false;
+    }
+  });
+
+  hashtagSubmit.addEventListener('click', () => {
+    savedHashtags = hashtagInput.value.trim();
+    localStorage.setItem('savedHashtags', savedHashtags);
+    showToast('Hashtags saved successfully!');
+  });
+
+  // ========== UTILITIES ==========
+  function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
   }
-});
 
-// Toast notifications
-function showToast(message) {
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.textContent = message;
-  document.body.appendChild(toast);
-  
-  setTimeout(() => {
-    toast.remove();
-  }, 3000);
-}
+  // ========== INITIALIZE DEFAULTS ==========
+  showSection('chat');
 
   // Calendar Module (unchanged)
   let calendarEvents = JSON.parse(localStorage.getItem('calendarEvents')) || [];
@@ -263,7 +272,7 @@ function showToast(message) {
     financeEntries.forEach(entry => {
       const profit = entry.revenue - entry.cost;
       const li = document.createElement('li');
-      li.textContent = `${entry.date} - Cost: $${entry.cost.toFixed(2)}, Revenue: $${entry.revenue.toFixed(2)}, Profit: $${profit.toFixed(2)}`;
+      li.textContent = `${entry.date} - Cost: ₦${entry.cost.toFixed(2)}, Revenue: ₦${entry.revenue.toFixed(2)}, Profit: ₦${profit.toFixed(2)}`;
       financeEntriesList.appendChild(li);
     });
   }
@@ -303,7 +312,7 @@ function showToast(message) {
     const totalCost = financeEntries.reduce((sum, entry) => sum + entry.cost, 0);
     const totalRevenue = financeEntries.reduce((sum, entry) => sum + entry.revenue, 0);
     const overallProfit = totalRevenue - totalCost;
-    let advice = `Total Profit: $${overallProfit.toFixed(2)}. `;
+    let advice = `Total Profit: ₦${overallProfit.toFixed(2)}. `;
     advice += overallProfit < 0
       ? "You're incurring losses. Consider reducing costs or boosting revenue."
       : "Great job! You're in profit. Consider reinvesting to grow further.";

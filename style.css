@@ -198,3 +198,50 @@ canvas {
     transform: translateY(-3px);
   }
 }
+
+/* mobile styles */
+@media (max-width: 768px) {
+  header nav button {
+    padding: 8px 12px;
+    margin: 4px;
+    font-size: 14px;
+  }
+
+  .section {
+    margin: 10px;
+    padding: 15px;
+  }
+
+  .chat-container {
+    height: 60vh;
+  }
+
+  .chat-input {
+    flex-direction: column;
+  }
+
+  .chat-input-field {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .chat-send-button {
+    width: 100%;
+  }
+
+  .message-bubble {
+    max-width: 90%;
+    padding: 8px;
+  }
+
+  .timestamp {
+    font-size: 0.75rem;
+  }
+}
+
+/* Enter key hint on mobile */
+.chat-input-field::placeholder {
+  color: #666;
+  font-style: italic;
+  content: "Type message (press Enter to send)";
+}
